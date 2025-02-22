@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: web-page-multi-cluster
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: cluster01
+            url: https://kubernetes.default.svc
+            region: br
+          - cluster: cluster02
+            url: https://url
+            region: us-east-1
+            namespace: webcolor
+  template:
+    metadata:
+      name: 'web-color-{{region}}-{{cluster}}'
+      namespace: argocd
+      labels:
+        curso: gitops
+    source: 
+      repoURL: https://github.com/wallafidevops/web-page-deploy.git
+      path: k8s
+      targetRevision: HEAD
+      directory:
+        recurse: true ## acesssar subpastas /webcolor e /nginx
+        exclude: 'nginx/*' ## excluir subpastas
+        # include: 'nginx/*' ## incluir subpastas
+        # include: '{nginx/*,webcolor/*}' ## incluir subpastas
+    project: default
+    syncPolicy:
+      automated:
+        prune: true  ### remove recursos que não estão no git
+        allowEmpty: true ### permite que o diretório esteja vazio
+        selfHeal: true ### corrige o estado do cluster , caso tiver udanças fora do git 
+      syncOptions:
+        - Validate=true ### valida o recurso antes de aplicar
+        - CreateNamespace=true ### cria o namespace caso não exista
+        - PrunePropagationPolicy=Foreground ### remove recursos filhos antes do pai     
+        - PruneLast=false ### remove o último recurso para não ter downtime    
+        - ApplyOutOfSyncOnly=false ### aplica tudo que está fora de sincronia      
+    destination:
+      server: '{{url}}'
+      namespace: '{{namespace}}'
+    info: 
+      - name: Projeto
+        value: Webcolor
